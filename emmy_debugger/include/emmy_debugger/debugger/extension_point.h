@@ -14,6 +14,7 @@ public:
 	// 
 	bool QueryVariable(lua_State *L, Idx<Variable> variable, const char *typeName, int object, int depth);
 	bool QueryVariableCustom(lua_State *L, Idx<Variable> variable, const char *typeName, int object, int depth);
+	bool QueryTableKeyName(lua_State* L, Idx<Variable> variable, int tableIndex, int keyIndex, int valueIndex, const char** keyName);
 
 	lua_State *QueryParentThread(lua_State *L);
 

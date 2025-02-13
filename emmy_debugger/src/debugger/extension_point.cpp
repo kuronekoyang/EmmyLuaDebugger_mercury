@@ -202,8 +202,39 @@ bool ExtensionPoint::QueryVariableCustom(lua_State* L, Idx<Variable> variable, c
 	return QueryVariableGeneric(L, variable, typeName, object, depth, "queryVariableCustom");
 }
 
-lua_State* ExtensionPoint::QueryParentThread(lua_State* L)
+bool ExtensionPoint::QueryTableKeyName(lua_State* L, Idx<Variable> variable, int tableIndex, int keyIndex, int valueIndex, const char** keyName)
 {
+	const char *result = nullptr;
+	keyIndex = lua_absindex(L, keyIndex);
+	valueIndex = lua_absindex(L, valueIndex);
+	const int t = lua_gettop(L);
+	const char *queryFunction = "queryTableKeyName";
+	lua_getglobal(L, ExtensionTable.c_str());
+
+	if (lua_istable(L, -1)) {
+		lua_getfield(L, -1, queryFunction);
+		if (lua_isfunction(L, -1)) {
+			pushVariable(L, variable);
+			lua_pushvalue(L, tableIndex);
+			lua_pushvalue(L, keyIndex);
+			lua_pushvalue(L, valueIndex);
+			const auto r = lua_pcall(L, 4, 1, 0);
+			if (r == LUA_OK) {
+				result = lua_tostring(L, -1);
+			} else {
+				const auto err = lua_tostring(L, -1);
+				printf("query error in %s: %s\n", queryFunction, err);
+			}
+		}
+	}
+
+	lua_settop(L, t);
+	if (keyName != nullptr)
+		*keyName = result;
+	return !!result;
+}
+
+lua_State *ExtensionPoint::QueryParentThread(lua_State *L) {
 	lua_State* PL = nullptr;
 	const int t = lua_gettop(L);
 	lua_getglobal(L, ExtensionTable.c_str());

@@ -447,32 +447,39 @@ void Debugger::GetVariable(lua_State *L, Idx<Variable> variable, int index, int 
 					auto v = variable.GetArena()->Alloc();
 					const auto t = lua_type(L, -2);
 					v->nameType = t;
-                    switch (t) {
-                        case LUA_TSTRING:
-                        {
-                            v->name = lua_tostring(L, -2);
-                            break;
-                        }
-                        case LUA_TNUMBER:
-                        {
-                            auto number = lua_tonumber(L, -2);
-                            if (static_cast<long long>(number) == number) {
-                                v->name = std::to_string(static_cast<long long>(number));
-                            } else {
-                                v->name = std::to_string(number);
-                            }
-                            break;
-                        }
-                        case LUA_TBOOLEAN:
-                        {
-                            v->name = lua_toboolean(L, -2) ? "true" : "false";
-                            break;
-                        }
-                        default: {
-                            v->name = ToPointer(L, -2);
-                            break;
-                        }
-                    }
+					auto isExtension = false;
+					if (queryHelper) {
+						const char *newKeyName = nullptr;
+						if (manager->extension.QueryTableKeyName(L, variable, index, -2, -1, &newKeyName)) {
+							v->name = newKeyName;
+							isExtension = true;
+						}
+					}
+					if (!isExtension) {
+						switch (t) {
+							case LUA_TSTRING: {
+								v->name = lua_tostring(L, -2);
+								break;
+							}
+							case LUA_TNUMBER: {
+								auto number = lua_tonumber(L, -2);
+								if (static_cast<long long>(number) == number) {
+									v->name = std::to_string(static_cast<long long>(number));
+								} else {
+									v->name = std::to_string(number);
+								}
+								break;
+							}
+							case LUA_TBOOLEAN: {
+								v->name = lua_toboolean(L, -2) ? "true" : "false";
+								break;
+							}
+							default: {
+								v->name = ToPointer(L, -2);
+								break;
+							}
+						}
+					}
 
 					GetVariable(L, v, -1, depth - 1);
 					variable->children.push_back(v);
@@ -712,11 +719,14 @@ int EnvIndexFunction(lua_State *L) {
 	}
 	lua_pop(L, 1);
 	// global
-	lua_getglobal(L, name);
+	lua_getglobal(L, "_G"); // _G
+	lua_pushstring(L, name); // _G name
+	lua_rawget(L, -2); // _G _G[name]
 	if (lua_isnil(L, -1) == 0) {
+		lua_pop(L, 1);
 		return 1;
 	}
-	lua_pop(L, 1);
+	lua_pop(L, 2);
 	return 0;
 }
 
