@@ -408,6 +408,9 @@ void Debugger::GetVariable(lua_State *L, Idx<Variable> variable, int index, int 
 					string = lua_tostring(L, -1);
 					lua_pop(L, 1);
 				}
+				else {
+					lua_settop(L, topIndex);
+				}
 			}
 			if (string) {
 				variable->value = string;
@@ -667,7 +670,7 @@ void Debugger::EnterDebugMode() {
 		std::unique_lock<std::mutex> lockEval(evalMtx);
 		if (evalQueue.empty() && blocking) {
 			lockEval.unlock();
-			cvRun.wait(lock);
+			cvRun.wait(lock, [this] { return !blocking || !evalQueue.empty(); });
 			lockEval.lock();
 		}
 		if (!evalQueue.empty()) {
